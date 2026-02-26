@@ -1,0 +1,23 @@
+# Freelance Auto Hunter - Backend Requirements
+
+# Web Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+
+# Browser Automation
+playwright==1.41.0
+
+# Scheduling
+APScheduler==3.10.4
+
+# HTTP Client
+requests==2.31.0
+
+# Environment Variables
+python-dotenv==1.0.0
+
+# Database (SQLite is built-in)
+
+# Optional: For better logging
+colorlog==6.8.0
