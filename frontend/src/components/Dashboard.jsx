@@ -10,7 +10,6 @@ const Dashboard = ({
   onGenerateProposal,
   onRefresh,
 }) => {
-  const [selectedJob, setSelectedJob] = useState(null);
   const [proposal, setProposal] = useState(null);
   const [showProposalModal, setShowProposalModal] = useState(false);
 
@@ -24,26 +23,22 @@ const Dashboard = ({
     }
   };
 
-  const handleViewJob = (job) => {
-    setSelectedJob(job);
-  };
-
-  const getStatusColor = (status) => {
+  const getStatusStyles = (status) => {
     switch (status) {
       case 'applied':
-        return 'bg-green-100 text-green-800';
+        return 'bg-accent-2 text-accent-2-vivid';
       case 'proposal_generated':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-accent-1 text-accent-1-vivid';
       case 'new':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-secondary text-foreground';
       case 'manual_review':
-        return 'bg-orange-100 text-orange-800';
+        return 'bg-accent-3 text-accent-3-vivid';
       case 'failed':
-        return 'bg-red-100 text-red-800';
+        return 'bg-destructive/10 text-destructive';
       case 'filtered':
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-secondary text-muted-foreground';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-secondary text-muted-foreground';
     }
   };
 
@@ -58,245 +53,265 @@ const Dashboard = ({
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-800 mb-2">
-          Freelance Auto Hunter
-        </h1>
-        <p className="text-gray-600">
-          Automated job hunting and application system
-        </p>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-        <StatCard
-          title="Jobs Found Today"
-          value={stats?.jobs_found_today || 0}
-          color="blue"
-        />
-        <StatCard
-          title="Applications Sent"
-          value={stats?.applications_sent_today || 0}
-          color="green"
-        />
-        <StatCard
-          title="Pending Manual"
-          value={stats?.pending_manual || 0}
-          color="orange"
-        />
-        <StatCard
-          title="Failed Today"
-          value={stats?.failed_today || 0}
-          color="red"
-        />
-        <StatCard
-          title="Success Rate"
-          value={`${stats?.success_rate || 0}%`}
-          color="purple"
-        />
-      </div>
-
-      {/* Control Panel */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h2 className="text-2xl font-semibold mb-4">Control Panel</h2>
-        
-        <div className="flex flex-wrap gap-4 mb-4">
-          <button
-            onClick={onRunScan}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-          >
-            🔍 Run Job Scan Now
-          </button>
-          
-          <button
-            onClick={onRefresh}
-            className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
-          >
-            🔄 Refresh Data
-          </button>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={schedulerStatus?.auto_apply_enabled || false}
-              onChange={(e) => onToggleAutoApply(e.target.checked)}
-              className="w-5 h-5"
-            />
-            <span className="text-lg font-medium">
-              Auto-Apply {schedulerStatus?.auto_apply_enabled ? '✅' : '❌'}
-            </span>
-          </label>
-          
-          <div className="text-sm text-gray-600">
-            ({schedulerStatus?.applications_today || 0} / {schedulerStatus?.max_applications_per_day || 10} applications today)
+    <div className="bg-background">
+      <header className="section-padding pb-12">
+        <div className="container-wide">
+          <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-card shadow-sm">
+            <div className="absolute inset-0 bg-gradient-hero opacity-80" aria-hidden="true" />
+            <div className="relative p-6 md:p-10 lg:p-12">
+              <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+                <div className="max-w-2xl">
+                  <p className="text-xs font-medium uppercase tracking-tight text-muted-foreground">
+                    Freelance Operations
+                  </p>
+                  <h1 className="mt-3 text-4xl font-semibold tracking-tight text-foreground md:text-5xl lg:text-6xl">
+                    Freelance Auto Hunter
+                  </h1>
+                  <p className="mt-4 text-lg text-muted-foreground md:text-xl">
+                    Automated job discovery and proposal management with a calm, engineering-first workflow.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <button
+                    onClick={onRunScan}
+                    className="rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-sm transition-all duration-300 hover:shadow-lg"
+                  >
+                    Run Job Scan
+                  </button>
+                  <button
+                    onClick={onRefresh}
+                    className="rounded-lg border-2 border-primary px-6 py-3 text-sm font-medium text-primary transition-colors duration-300 hover:bg-primary/10"
+                  >
+                    Refresh Data
+                  </button>
+                </div>
+              </div>
+              <div className="mt-8 flex flex-wrap items-center gap-3 text-xs font-medium text-muted-foreground">
+                <span className="rounded-full bg-secondary px-3 py-1">
+                  Scheduler: {schedulerStatus?.running ? 'Running' : 'Stopped'}
+                </span>
+                <span className="rounded-full bg-secondary px-3 py-1">
+                  Auto-apply {schedulerStatus?.auto_apply_enabled ? 'enabled' : 'disabled'}
+                </span>
+                <span>
+                  Runs every 3 hours (8am-6pm, weekdays only)
+                </span>
+              </div>
+            </div>
           </div>
         </div>
+      </header>
 
-        <div className="mt-4 text-sm text-gray-500">
-          Scheduler: {schedulerStatus?.running ? '🟢 Running' : '🔴 Stopped'} | 
-          Runs every 3 hours (8am-6pm, weekdays only)
-        </div>
-      </div>
+      <main className="container-wide pb-16">
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
+          <StatCard
+            title="Jobs Found Today"
+            value={stats?.jobs_found_today || 0}
+            accent="bg-accent-1"
+          />
+          <StatCard
+            title="Applications Sent"
+            value={stats?.applications_sent_today || 0}
+            accent="bg-accent-2"
+          />
+          <StatCard
+            title="Pending Manual"
+            value={stats?.pending_manual || 0}
+            accent="bg-accent-3"
+          />
+          <StatCard
+            title="Failed Today"
+            value={stats?.failed_today || 0}
+            accent="bg-destructive/10"
+          />
+          <StatCard
+            title="Success Rate"
+            value={`${stats?.success_rate || 0}%`}
+            accent="bg-secondary"
+          />
+        </section>
 
-      {/* Jobs Table */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="px-6 py-4 border-b">
-          <h2 className="text-2xl font-semibold">Jobs ({jobs.length})</h2>
-        </div>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Job Title
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Company
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Platform
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Score
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {jobs.length === 0 ? (
+        <section className="mt-8 rounded-2xl border border-border/50 bg-card p-6 shadow-sm transition-all duration-300 hover:border-border hover:shadow-lg md:p-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold text-foreground">Control Panel</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Manage scanning, refresh cadence, and auto-apply limits.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <button
+                onClick={onRunScan}
+                className="rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-all duration-300 hover:shadow-lg"
+              >
+                Run Job Scan
+              </button>
+              <button
+                onClick={onRefresh}
+                className="rounded-lg border-2 border-primary px-6 py-3 text-sm font-medium text-primary transition-colors duration-300 hover:bg-primary/10"
+              >
+                Refresh Data
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            <label className="flex items-center justify-between rounded-lg border border-border/60 bg-background-subtle p-4 text-sm text-foreground">
+              <span className="font-medium">Auto-apply</span>
+              <input
+                type="checkbox"
+                checked={schedulerStatus?.auto_apply_enabled || false}
+                onChange={(e) => onToggleAutoApply(e.target.checked)}
+                className="h-5 w-5 accent-primary"
+              />
+            </label>
+            <div className="rounded-lg border border-border/60 bg-background-subtle p-4 text-sm text-muted-foreground">
+              {schedulerStatus?.applications_today || 0} / {schedulerStatus?.max_applications_per_day || 10} applications today
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-8 rounded-2xl border border-border/50 bg-card shadow-sm">
+          <div className="flex flex-col gap-2 border-b border-border/60 px-6 py-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold text-foreground">Jobs</h2>
+              <p className="text-sm text-muted-foreground">{jobs.length} results in the current queue.</p>
+            </div>
+            <div className="text-xs font-medium text-muted-foreground">
+              Sorted by latest ingestion
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-background-subtle text-xs uppercase tracking-wider text-muted-foreground">
                 <tr>
-                  <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
-                    No jobs found. Click "Run Job Scan Now" to start.
-                  </td>
+                  <th className="px-6 py-3 text-left">Job Title</th>
+                  <th className="px-6 py-3 text-left">Company</th>
+                  <th className="px-6 py-3 text-left">Platform</th>
+                  <th className="px-6 py-3 text-left">Score</th>
+                  <th className="px-6 py-3 text-left">Status</th>
+                  <th className="px-6 py-3 text-left">Date</th>
+                  <th className="px-6 py-3 text-left">Actions</th>
                 </tr>
-              ) : (
-                jobs.map((job) => (
-                  <tr key={job.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">
-                        {job.title}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {job.location}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {job.company}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 uppercase">
-                      {job.platform}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        <div className="text-sm font-semibold text-gray-900">
-                          {job.match_score}
-                        </div>
-                        <div className="ml-2 w-16 bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-blue-600 h-2 rounded-full"
-                            style={{ width: `${job.match_score}%` }}
-                          />
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
-                          job.status
-                        )}`}
-                      >
-                        {job.status.replace('_', ' ')}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {formatDate(job.created_at)}
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium space-x-2">
-                      <a
-                        href={job.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-900"
-                      >
-                        View Job
-                      </a>
-                      {job.status === 'proposal_generated' || job.status === 'applied' ? (
-                        <button
-                          onClick={() => handleViewProposal(job.id)}
-                          className="text-green-600 hover:text-green-900"
-                        >
-                          View Proposal
-                        </button>
-                      ) : job.status === 'new' ? (
-                        <button
-                          onClick={() => onGenerateProposal(job.id)}
-                          className="text-purple-600 hover:text-purple-900"
-                        >
-                          Generate
-                        </button>
-                      ) : null}
+              </thead>
+              <tbody className="divide-y divide-border-subtle">
+                {jobs.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" className="px-6 py-6 text-center text-muted-foreground">
+                      No jobs found. Run a scan to populate the queue.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                ) : (
+                  jobs.map((job) => (
+                    <tr key={job.id} className="group transition-colors duration-300 hover:bg-background-subtle">
+                      <td className="px-6 py-4">
+                        <div className="font-medium text-foreground">{job.title}</div>
+                        <div className="text-xs text-muted-foreground">{job.location}</div>
+                      </td>
+                      <td className="px-6 py-4 text-foreground">{job.company}</td>
+                      <td className="px-6 py-4 text-foreground uppercase">{job.platform}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <div className="font-semibold text-foreground">{job.match_score}</div>
+                          <div className="h-2 w-20 rounded-full bg-secondary">
+                            <div
+                              className="h-2 rounded-full bg-primary"
+                              style={{ width: `${job.match_score}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${getStatusStyles(
+                            job.status
+                          )}`}
+                        >
+                          {job.status.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-muted-foreground">
+                        {formatDate(job.created_at)}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-wrap gap-3 text-xs font-medium">
+                          <a
+                            href={job.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="link-hover text-foreground transition-colors duration-300 hover:text-primary"
+                          >
+                            View Job
+                          </a>
+                          {job.status === 'proposal_generated' || job.status === 'applied' ? (
+                            <button
+                              onClick={() => handleViewProposal(job.id)}
+                              className="link-hover text-accent-2-vivid"
+                            >
+                              View Proposal
+                            </button>
+                          ) : job.status === 'new' ? (
+                            <button
+                              onClick={() => onGenerateProposal(job.id)}
+                              className="link-hover text-accent-3-vivid"
+                            >
+                              Generate
+                            </button>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
 
-      {/* Proposal Modal */}
       {showProposalModal && proposal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="text-2xl font-semibold">Generated Proposal</h3>
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4">
+          <div className="absolute inset-0 bg-foreground/20 backdrop-blur-sm" aria-hidden="true" />
+          <div className="relative mt-16 w-full max-w-2xl overflow-hidden rounded-2xl bg-background shadow-2xl">
+            <div className="border-b border-border/60 p-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="text-2xl font-semibold text-foreground">Generated Proposal</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Job ID: {proposal.job_id} · Generated: {formatDate(proposal.generated_at)}
+                  </p>
+                </div>
                 <button
                   onClick={() => setShowProposalModal(false)}
-                  className="text-gray-500 hover:text-gray-700 text-2xl"
-                >
-                  ×
-                </button>
-              </div>
-              
-              <div className="mb-4 text-sm text-gray-500">
-                Job ID: {proposal.job_id} | Generated: {formatDate(proposal.generated_at)}
-              </div>
-              
-              <div className="bg-gray-50 p-4 rounded-lg whitespace-pre-wrap">
-                {proposal.content}
-              </div>
-              
-              <div className="mt-4 flex justify-end gap-2">
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(proposal.content);
-                    alert('Proposal copied to clipboard!');
-                  }}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  Copy to Clipboard
-                </button>
-                <button
-                  onClick={() => setShowProposalModal(false)}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                  className="rounded-full bg-secondary px-3 py-1 text-sm text-foreground transition-colors duration-300 hover:bg-border-subtle"
+                  aria-label="Close proposal"
                 >
                   Close
                 </button>
               </div>
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto p-6">
+              <div className="rounded-lg border border-border/60 bg-background-subtle p-4 text-sm text-foreground whitespace-pre-wrap">
+                {proposal.content}
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 border-t border-border/60 p-6">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(proposal.content);
+                  alert('Proposal copied to clipboard!');
+                }}
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-all duration-300 hover:shadow-lg"
+              >
+                Copy to Clipboard
+              </button>
+              <button
+                onClick={() => setShowProposalModal(false)}
+                className="rounded-lg border-2 border-primary px-4 py-2 text-sm font-medium text-primary transition-colors duration-300 hover:bg-primary/10"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
@@ -305,23 +320,15 @@ const Dashboard = ({
   );
 };
 
-const StatCard = ({ title, value, color }) => {
-  const colorClasses = {
-    blue: 'bg-blue-500',
-    green: 'bg-green-500',
-    orange: 'bg-orange-500',
-    red: 'bg-red-500',
-    purple: 'bg-purple-500',
-  };
-
+const StatCard = ({ title, value, accent }) => {
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
+    <div className="rounded-2xl border border-border/50 bg-card p-6 shadow-sm transition-all duration-300 hover:border-border hover:shadow-lg">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-gray-500 text-sm mb-1">{title}</p>
-          <p className="text-3xl font-bold text-gray-800">{value}</p>
+          <p className="text-xs font-medium uppercase tracking-tight text-muted-foreground">{title}</p>
+          <p className="mt-2 text-3xl font-semibold text-foreground">{value}</p>
         </div>
-        <div className={`${colorClasses[color]} w-12 h-12 rounded-lg opacity-20`} />
+        <div className={`h-12 w-12 rounded-full ${accent}`} />
       </div>
     </div>
   );

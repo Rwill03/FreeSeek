@@ -74,22 +74,22 @@ function App() {
 
   if (loading && !stats) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-xl text-gray-600">Loading...</div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-lg text-muted-foreground">Loading dashboard...</div>
       </div>
     );
   }
 
   if (error && !stats) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-xl text-red-600">Error: {error}</div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-lg text-destructive">Error: {error}</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-background">
       <Dashboard
         stats={stats}
         jobs={jobs}
