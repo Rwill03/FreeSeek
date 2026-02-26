@@ -3,6 +3,7 @@ FastAPI main application for Freelance Auto Hunter
 """
 import logging
 import os
+import asyncio
 from contextlib import asynccontextmanager
 from typing import List, Optional
 
@@ -20,13 +21,49 @@ from app.scheduler import JobHunterScheduler
 # Load environment variables
 load_dotenv()
 
+# Custom logging handler to collect logs
+class LogCollector(logging.Handler):
+    """Custom logging handler that collects logs for API retrieval"""
+    def __init__(self, max_records=1000):
+        super().__init__()
+        self.records = []
+        self.max_records = max_records
+    
+    def emit(self, record):
+        """Collect log record"""
+        try:
+            # Only collect scheduler and llm service logs
+            if record.name in ['app.scheduler', 'app.llm_service', 'app.scraper', 'app.filter']:
+                msg = self.format(record)
+                self.records.append(msg)
+                # Keep only recent records
+                if len(self.records) > self.max_records:
+                    self.records.pop(0)
+        except Exception:
+            self.handleError(record)
+    
+    def get_logs(self):
+        """Get all collected logs as a single string"""
+        return '\n'.join(self.records)
+    
+    def clear(self):
+        """Clear collected logs"""
+        self.records = []
+
+# Create log collector
+log_collector = LogCollector()
+log_collector.setFormatter(
+    logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+)
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler("freelance_hunter.log"),
-        logging.StreamHandler()
+        logging.StreamHandler(),
+        log_collector
     ]
 )
 logger = logging.getLogger(__name__)
@@ -50,9 +87,27 @@ async def lifespan(app: FastAPI):
     # Initialize components
     location_keywords = ["bruges", "brugge", "belgium", "remote"]
     skill_keywords = [
-        "ai", "python", "fastapi", "react", "machine learning",
-        "automation", "odoo", "nlp", "computer vision", "fullstack",
-        "developer", "engineer", "software"
+        # Languages
+        "python", "javascript", "typescript", "java", "c#", "c++", "rust", "go", "kotlin",
+        "php", "ruby", "swift", "objective-c", "groovy", "scala",
+        # Frontend
+        "react", "vue", "angular", "nextjs", "nuxt", "svelte", "frontend", "ui", "ux",
+        "html", "css", "tailwind", "bootstrap",
+        # Backend
+        "fastapi", "django", "flask", "spring", "express", "nestjs", "rails", "aspnet",
+        "backend", "api", "rest", "graphql",
+        # Data & AI
+        "machine learning", "ai", "data science", "nlp", "computer vision",
+        "tensorflow", "pytorch", "scikit-learn", "pandas", "numpy", "analytics",
+        # DevOps & Infrastructure
+        "devops", "kubernetes", "docker", "aws", "azure", "gcp", "cloud",
+        "ci/cd", "jenkins", "gitlab", "github", "infrastructure", "terraform",
+        # Database
+        "sql", "postgresql", "mysql", "mongodb", "redis", "elasticsearch", "database",
+        # Other Tech
+        "automation", "odoo", "fullstack", "full stack", "software",
+        "developer", "engineer", "programmer", "architect", "qa", "testing",
+        "security", "cybersecurity", "blockchain", "web3", "mobile", "ios", "android"
     ]
     
     job_filter = JobFilter(
@@ -141,6 +196,11 @@ class RunScanRequest(BaseModel):
 
 class GenerateProposalRequest(BaseModel):
     """Request to generate proposal"""
+    job_id: int
+
+
+class MarkAppliedRequest(BaseModel):
+    """Request to mark job as applied"""
     job_id: int
 
 
@@ -257,14 +317,17 @@ async def run_scan(request: RunScanRequest):
     """Manually trigger job scan"""
     try:
         if request.manual:
-            # Run scan asynchronously
-            import asyncio
-            asyncio.create_task(scheduler.run_now())
-            return {"message": "Job scan started", "status": "running"}
+            # Mark as scanning immediately
+            scheduler._currently_scanning = True
+            # Create and schedule the async task
+            asyncio.ensure_future(scheduler.run_job_scan())
+            logger.info("Scheduled manual job scan task")
+            return {"message": "Job scan started", "status": "running", "scanning": True}
         else:
             raise HTTPException(status_code=400, detail="Invalid request")
     except Exception as e:
         logger.error(f"Error running scan: {e}")
+        scheduler._currently_scanning = False
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -309,6 +372,41 @@ async def generate_proposal(request: GenerateProposalRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/jobs/mark-applied")
+async def mark_job_applied(request: MarkAppliedRequest):
+    """Mark job as manually applied"""
+    try:
+        job = db.get_job(request.job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+        
+        # Update job status to applied
+        from datetime import datetime
+        db.update_job_status(request.job_id, JobStatus.APPLIED)
+        
+        # Update applied_at timestamp
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE jobs SET applied_at = ? WHERE id = ?",
+            (datetime.now().isoformat(), request.job_id)
+        )
+        conn.commit()
+        conn.close()
+        
+        logger.info(f"Job {request.job_id} marked as manually applied")
+        return {
+            "message": "Job marked as applied successfully",
+            "job_id": request.job_id,
+            "status": "applied"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error marking job as applied: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/toggle-auto-apply")
 async def toggle_auto_apply(request: ToggleAutoApplyRequest):
     """Toggle auto-apply feature"""
@@ -331,12 +429,27 @@ async def get_scheduler_status():
     try:
         return {
             "running": scheduler.is_running(),
+            "scanning": scheduler.is_scanning(),
             "auto_apply_enabled": scheduler.auto_apply_enabled,
             "max_applications_per_day": scheduler.max_applications_per_day,
             "applications_today": db.get_applications_count_today()
         }
     except Exception as e:
         logger.error(f"Error getting scheduler status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/logs")
+async def get_logs():
+    """Get collected LLM job search logs"""
+    try:
+        logs_text = log_collector.get_logs()
+        return {
+            "logs": logs_text if logs_text else "No logs available yet. Run a job scan to generate logs.",
+            "timestamp": str(__import__('datetime').datetime.now().isoformat())
+        }
+    except Exception as e:
+        logger.error(f"Error getting logs: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

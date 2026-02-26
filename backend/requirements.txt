@@ -14,6 +14,13 @@ APScheduler==3.10.4
 # HTTP Client
 requests==2.31.0
 
+# Web Parsing
+beautifulsoup4==4.12.2
+lxml==4.9.4
+
+# RSS/XML Feed Parsing
+feedparser==6.0.10
+
 # Environment Variables
 python-dotenv==1.0.0
 

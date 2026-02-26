@@ -60,6 +60,18 @@ export const apiClient = {
     const response = await api.get('/scheduler/status');
     return response.data;
   },
+
+  // Get LLM logs
+  getLogs: async () => {
+    const response = await api.get('/logs');
+    return response.data;
+  },
+
+  // Mark job as applied
+  markJobApplied: async (jobId) => {
+    const response = await api.post('/jobs/mark-applied', { job_id: jobId });
+    return response.data;
+  },
 };
 
 export default apiClient;

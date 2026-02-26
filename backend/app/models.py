@@ -23,6 +23,11 @@ class Platform(str, Enum):
     LINKEDIN = "linkedin"
     INDEED = "indeed"
     UPWORK = "upwork"
+    REMOTEOK = "remoteok"
+    WEWORKREMOTELY = "weworkremotely"
+    FREELANCER = "freelancer"
+    REMOTIVE = "remotive"
+    GITHUB = "github"
 
 
 class Job(BaseModel):

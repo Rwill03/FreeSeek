@@ -54,29 +54,17 @@ class JobHunterScheduler:
         
         self.scheduler = AsyncIOScheduler()
         self._running = False
+        self._currently_scanning = False  # Track if a scan is in progress
     
     def is_business_hours(self) -> bool:
-        """Check if current time is within business hours (8am-6pm)"""
-        now = datetime.now()
-        
-        # Skip weekends
-        if now.weekday() >= 5:  # Saturday = 5, Sunday = 6
-            logger.info("Skipping: Weekend")
-            return False
-        
-        # Check time
-        current_time = now.time()
-        start_time = time(8, 0)  # 8:00 AM
-        end_time = time(18, 0)   # 6:00 PM
-        
-        if not (start_time <= current_time <= end_time):
-            logger.info(f"Skipping: Outside business hours (current: {current_time})")
-            return False
-        
+        """Check if current time is within business hours - DISABLED, always returns True"""
+        # Business hours check is disabled - scanning runs 24/7
         return True
     
     async def run_job_scan(self):
         """Run complete job scanning and application process"""
+        self._currently_scanning = True  # Mark scan as started
+        
         logger.info("=" * 60)
         logger.info("Starting automated job scan")
         logger.info("=" * 60)
@@ -178,6 +166,9 @@ class JobHunterScheduler:
         except Exception as e:
             logger.error(f"Error in job scan: {e}", exc_info=True)
         
+        finally:
+            self._currently_scanning = False  # Mark scan as complete
+        
         logger.info("=" * 60)
     
     def start(self):
@@ -211,6 +202,10 @@ class JobHunterScheduler:
     def is_running(self) -> bool:
         """Check if scheduler is running"""
         return self._running
+    
+    def is_scanning(self) -> bool:
+        """Check if a job scan is currently in progress"""
+        return self._currently_scanning
     
     async def run_now(self):
         """Manually trigger a job scan"""

@@ -5,13 +5,18 @@ const Dashboard = ({
   stats,
   jobs,
   schedulerStatus,
+  logs,
   onRunScan,
   onToggleAutoApply,
   onGenerateProposal,
+  onMarkJobApplied,
   onRefresh,
+  onGetLogs,
+  onClearLogs,
 }) => {
   const [proposal, setProposal] = useState(null);
   const [showProposalModal, setShowProposalModal] = useState(false);
+  const [showLogsModal, setShowLogsModal] = useState(false);
 
   const handleViewProposal = async (jobId) => {
     try {
@@ -71,18 +76,39 @@ const Dashboard = ({
                     Automated job discovery and proposal management with a calm, engineering-first workflow.
                   </p>
                 </div>
-                <div className="flex flex-col gap-3 sm:flex-row">
+                <div className="flex flex-col gap-3 sm:flex-row items-stretch">
                   <button
                     onClick={onRunScan}
-                    className="rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-sm transition-all duration-300 hover:shadow-lg"
+                    disabled={schedulerStatus?.scanning}
+                    className={`rounded-lg px-6 py-3 text-sm font-medium transition-all duration-300 flex items-center justify-center gap-2 ${
+                      schedulerStatus?.scanning
+                        ? 'bg-primary/80 text-primary-foreground cursor-not-allowed'
+                        : 'bg-primary text-primary-foreground shadow-sm hover:shadow-lg'
+                    }`}
                   >
-                    Run Job Scan
+                    {schedulerStatus?.scanning ? (
+                      <>
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"></div>
+                        Scanning...
+                      </>
+                    ) : (
+                      'Run Job Scan'
+                    )}
                   </button>
                   <button
                     onClick={onRefresh}
                     className="rounded-lg border-2 border-primary px-6 py-3 text-sm font-medium text-primary transition-colors duration-300 hover:bg-primary/10"
                   >
                     Refresh Data
+                  </button>
+                  <button
+                    onClick={() => {
+                      onGetLogs();
+                      setShowLogsModal(true);
+                    }}
+                    className="rounded-lg border-2 border-muted-foreground px-6 py-3 text-sm font-medium text-muted-foreground transition-colors duration-300 hover:border-foreground hover:text-foreground"
+                  >
+                    View Logs
                   </button>
                 </div>
               </div>
@@ -94,7 +120,7 @@ const Dashboard = ({
                   Auto-apply {schedulerStatus?.auto_apply_enabled ? 'enabled' : 'disabled'}
                 </span>
                 <span>
-                  Runs every 3 hours (8am-6pm, weekdays only)
+                  Runs every 3 hours (24/7, no time limits)
                 </span>
               </div>
             </div>
@@ -259,6 +285,14 @@ const Dashboard = ({
                               Generate
                             </button>
                           ) : null}
+                          {job.status !== 'applied' && (
+                            <button
+                              onClick={() => onMarkJobApplied(job.id)}
+                              className="link-hover text-green-600 hover:text-green-700"
+                            >
+                              Mark as Applied
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -308,6 +342,53 @@ const Dashboard = ({
               </button>
               <button
                 onClick={() => setShowProposalModal(false)}
+                className="rounded-lg border-2 border-primary px-4 py-2 text-sm font-medium text-primary transition-colors duration-300 hover:bg-primary/10"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showLogsModal && logs && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4">
+          <div className="absolute inset-0 bg-foreground/20 backdrop-blur-sm" aria-hidden="true" />
+          <div className="relative mt-16 w-full max-w-4xl overflow-hidden rounded-2xl bg-background shadow-2xl">
+            <div className="border-b border-border/60 p-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="text-2xl font-semibold text-foreground">LLM Job Search Logs</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Clean high-level logging from the last job search
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowLogsModal(false)}
+                  className="rounded-full bg-secondary px-3 py-1 text-sm text-foreground transition-colors duration-300 hover:bg-border-subtle"
+                  aria-label="Close logs"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto p-6">
+              <div className="rounded-lg border border-border/60 bg-background-subtle p-4 text-sm text-foreground font-mono whitespace-pre-wrap">
+                {logs.logs || 'No logs available'}
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 border-t border-border/60 p-6">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(logs.logs || '');
+                  alert('Logs copied to clipboard!');
+                }}
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-all duration-300 hover:shadow-lg"
+              >
+                Copy Logs
+              </button>
+              <button
+                onClick={() => setShowLogsModal(false)}
                 className="rounded-lg border-2 border-primary px-4 py-2 text-sm font-medium text-primary transition-colors duration-300 hover:bg-primary/10"
               >
                 Close
