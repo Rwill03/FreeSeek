@@ -8,6 +8,8 @@ function App() {
   const [schedulerStatus, setSchedulerStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [logs, setLogs] = useState(null);
+  const [scanCheckInterval, setScanCheckInterval] = useState(null);
 
   const fetchData = async () => {
     try {
@@ -23,6 +25,36 @@ function App() {
       setStats(statsData);
       setJobs(jobsData);
       setSchedulerStatus(statusData);
+      
+      // If scanning is in progress, set up frequent polling
+      if (statusData.scanning) {
+        if (scanCheckInterval) clearInterval(scanCheckInterval);
+        const interval = setInterval(async () => {
+          try {
+            const [newStatsData, newJobsData, newStatusData] = await Promise.all([
+              apiClient.getStats(),
+              apiClient.getJobs(),
+              apiClient.getSchedulerStatus(),
+            ]);
+            setStats(newStatsData);
+            setJobs(newJobsData);
+            setSchedulerStatus(newStatusData);
+            
+            // Clear interval when scanning is done
+            if (!newStatusData.scanning) {
+              clearInterval(interval);
+              setScanCheckInterval(null);
+            }
+          } catch (err) {
+            console.error('Error updating data during scan:', err);
+          }
+        }, 2000); // Poll every 2 seconds during scan
+        setScanCheckInterval(interval);
+      } else if (scanCheckInterval) {
+        // Clear interval if scanning stopped
+        clearInterval(scanCheckInterval);
+        setScanCheckInterval(null);
+      }
     } catch (err) {
       console.error('Error fetching data:', err);
       setError(err.message || 'Failed to fetch data');
@@ -34,19 +66,34 @@ function App() {
   useEffect(() => {
     fetchData();
     
-    // Refresh data every 30 seconds
+    // Refresh data every 30 seconds (normal polling)
     const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    
+    return () => {
+      clearInterval(interval);
+      if (scanCheckInterval) clearInterval(scanCheckInterval);
+    };
+  }, [scanCheckInterval]);
 
   const handleRunScan = async () => {
     try {
       await apiClient.runScan();
-      alert('Job scan started! Check back in a few minutes.');
-      // Refresh data after a delay
-      setTimeout(fetchData, 5000);
+      // Give the backend a moment to set the scanning flag
+      await new Promise(resolve => setTimeout(resolve, 500));
+      // Fetch the latest status (which should now show scanning: true)
+      const statusData = await apiClient.getSchedulerStatus();
+      setSchedulerStatus(statusData);
     } catch (err) {
       alert('Failed to start scan: ' + err.message);
+    }
+  };
+
+  const handleGetLogs = async () => {
+    try {
+      const logsData = await apiClient.getLogs();
+      setLogs(logsData);
+    } catch (err) {
+      alert('Failed to fetch logs: ' + err.message);
     }
   };
 
@@ -72,32 +119,48 @@ function App() {
     }
   };
 
+  const handleMarkJobApplied = async (jobId) => {
+    try {
+      const result = await apiClient.markJobApplied(jobId);
+      alert('Job marked as applied!');
+      fetchData(); // Refresh data
+      return result;
+    } catch (err) {
+      alert('Failed to mark job as applied: ' + err.message);
+      return null;
+    }
+  };
+
   if (loading && !stats) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-xl text-gray-600">Loading...</div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-lg text-muted-foreground">Loading dashboard...</div>
       </div>
     );
   }
 
   if (error && !stats) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-xl text-red-600">Error: {error}</div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-lg text-destructive">Error: {error}</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-background">
       <Dashboard
         stats={stats}
         jobs={jobs}
         schedulerStatus={schedulerStatus}
+        logs={logs}
         onRunScan={handleRunScan}
         onToggleAutoApply={handleToggleAutoApply}
         onGenerateProposal={handleGenerateProposal}
+        onMarkJobApplied={handleMarkJobApplied}
         onRefresh={fetchData}
+        onGetLogs={handleGetLogs}
+        onClearLogs={() => setLogs(null)}
       />
     </div>
   );
