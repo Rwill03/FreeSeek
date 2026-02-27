@@ -207,25 +207,11 @@ const Dashboard = ({
           />
         </section>
 
-        <section className="mt-8 grid gap-4 lg:grid-cols-3">
+        <section className="mt-8 grid gap-4 lg:grid-cols-2">
           <div className="rounded-2xl border border-border/50 bg-card p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-foreground">Pipeline Overview</h3>
+            <h3 className="text-lg font-semibold text-foreground">Operations</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Snapshot of the current queue by status.
-            </p>
-            <div className="mt-4 grid gap-3">
-              <MiniStat label="New" value={statusCounts.new || 0} accent="bg-secondary" />
-              <MiniStat label="Proposal Generated" value={statusCounts.proposal_generated || 0} accent="bg-accent-1" />
-              <MiniStat label="Manual Review" value={statusCounts.manual_review || 0} accent="bg-accent-3" />
-              <MiniStat label="Applied" value={statusCounts.applied || 0} accent="bg-accent-2" />
-              <MiniStat label="Failed" value={statusCounts.failed || 0} accent="bg-destructive/10" />
-              <MiniStat label="Filtered" value={statusCounts.filtered || 0} accent="bg-secondary" />
-            </div>
-          </div>
-          <div className="rounded-2xl border border-border/50 bg-card p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-foreground">System Pulse</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Live status for the scheduler and scanning cadence.
+              Core automation controls and daily apply limits.
             </p>
             <div className="mt-4 grid gap-3 text-sm">
               <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background-subtle p-3">
@@ -240,81 +226,32 @@ const Dashboard = ({
                   {schedulerStatus?.scanning ? 'In progress' : 'Idle'}
                 </span>
               </div>
-              <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background-subtle p-3">
-                <span className="text-muted-foreground">Auto-apply</span>
-                <span className="font-medium text-foreground">
-                  {schedulerStatus?.auto_apply_enabled ? 'Enabled' : 'Disabled'}
-                </span>
+              <label className="flex items-center justify-between rounded-lg border border-border/60 bg-background-subtle p-3">
+                <span className="font-medium text-foreground">Auto-apply</span>
+                <input
+                  type="checkbox"
+                  checked={schedulerStatus?.auto_apply_enabled || false}
+                  onChange={(e) => onToggleAutoApply(e.target.checked)}
+                  className="h-5 w-5 accent-primary"
+                />
+              </label>
+              <div className="rounded-lg border border-border/60 bg-background-subtle p-3 text-muted-foreground">
+                {schedulerStatus?.applications_today || 0} / {schedulerStatus?.max_applications_per_day || 10} applications today
               </div>
             </div>
           </div>
           <div className="rounded-2xl border border-border/50 bg-card p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-foreground">Quick Actions</h3>
+            <h3 className="text-lg font-semibold text-foreground">Pipeline Overview</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Jump into the most common workflows.
+              Snapshot of the current queue by status.
             </p>
             <div className="mt-4 grid gap-3">
-              <button
-                onClick={onRunScan}
-                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-all duration-300 hover:shadow-lg"
-              >
-                Run Job Scan
-              </button>
-              <button
-                onClick={onRefresh}
-                className="rounded-lg border-2 border-primary px-4 py-2 text-sm font-medium text-primary transition-colors duration-300 hover:bg-primary/10"
-              >
-                Refresh Data
-              </button>
-              <button
-                onClick={() => {
-                  onGetLogs();
-                  setShowLogsModal(true);
-                }}
-                className="rounded-lg border-2 border-muted-foreground px-4 py-2 text-sm font-medium text-muted-foreground transition-colors duration-300 hover:border-foreground hover:text-foreground"
-              >
-                View Logs
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-8 rounded-2xl border border-border/50 bg-card p-6 shadow-sm transition-all duration-300 hover:border-border hover:shadow-lg md:p-8">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h2 className="text-2xl font-semibold text-foreground">Control Panel</h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Manage scanning, refresh cadence, and auto-apply limits.
-              </p>
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <button
-                onClick={onRunScan}
-                className="rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-all duration-300 hover:shadow-lg"
-              >
-                Run Job Scan
-              </button>
-              <button
-                onClick={onRefresh}
-                className="rounded-lg border-2 border-primary px-6 py-3 text-sm font-medium text-primary transition-colors duration-300 hover:bg-primary/10"
-              >
-                Refresh Data
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-6 grid gap-4 lg:grid-cols-2">
-            <label className="flex items-center justify-between rounded-lg border border-border/60 bg-background-subtle p-4 text-sm text-foreground">
-              <span className="font-medium">Auto-apply</span>
-              <input
-                type="checkbox"
-                checked={schedulerStatus?.auto_apply_enabled || false}
-                onChange={(e) => onToggleAutoApply(e.target.checked)}
-                className="h-5 w-5 accent-primary"
-              />
-            </label>
-            <div className="rounded-lg border border-border/60 bg-background-subtle p-4 text-sm text-muted-foreground">
-              {schedulerStatus?.applications_today || 0} / {schedulerStatus?.max_applications_per_day || 10} applications today
+              <MiniStat label="New" value={statusCounts.new || 0} accent="bg-secondary" />
+              <MiniStat label="Proposal Generated" value={statusCounts.proposal_generated || 0} accent="bg-accent-1" />
+              <MiniStat label="Manual Review" value={statusCounts.manual_review || 0} accent="bg-accent-3" />
+              <MiniStat label="Applied" value={statusCounts.applied || 0} accent="bg-accent-2" />
+              <MiniStat label="Failed" value={statusCounts.failed || 0} accent="bg-destructive/10" />
+              <MiniStat label="Filtered" value={statusCounts.filtered || 0} accent="bg-secondary" />
             </div>
           </div>
         </section>
@@ -553,7 +490,7 @@ const Dashboard = ({
         </div>
       )}
 
-      {showLogsModal && logs && (
+      {showLogsModal && (
         <div className="fixed inset-0 z-50 flex items-start justify-center p-4">
           <div className="absolute inset-0 bg-foreground/20 backdrop-blur-sm" aria-hidden="true" />
           <div className="relative mt-16 w-full max-w-4xl overflow-hidden rounded-2xl bg-background shadow-2xl">
@@ -576,13 +513,13 @@ const Dashboard = ({
             </div>
             <div className="max-h-[60vh] overflow-y-auto p-6">
               <div className="rounded-lg border border-border/60 bg-background-subtle p-4 text-sm text-foreground font-mono whitespace-pre-wrap">
-                {logs.logs || 'No logs available'}
+                {logs?.logs || 'Loading logs...'}
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 border-t border-border/60 p-6">
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(logs.logs || '');
+                  navigator.clipboard.writeText(logs?.logs || '');
                   alert('Logs copied to clipboard!');
                 }}
                 className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-all duration-300 hover:shadow-lg"
