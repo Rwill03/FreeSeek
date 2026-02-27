@@ -90,9 +90,11 @@ function App() {
 
   const handleGetLogs = async () => {
     try {
+      setLogs({ logs: 'Loading logs...' });
       const logsData = await apiClient.getLogs();
       setLogs(logsData);
     } catch (err) {
+      setLogs({ logs: 'Failed to fetch logs. Please try again.' });
       alert('Failed to fetch logs: ' + err.message);
     }
   };

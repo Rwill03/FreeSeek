@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import apiClient from '../api';
 
 const Dashboard = ({
@@ -17,6 +17,11 @@ const Dashboard = ({
   const [proposal, setProposal] = useState(null);
   const [showProposalModal, setShowProposalModal] = useState(false);
   const [showLogsModal, setShowLogsModal] = useState(false);
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [platformFilter, setPlatformFilter] = useState('all');
+  const [minScore, setMinScore] = useState(0);
+  const [sortBy, setSortBy] = useState('newest');
 
   const handleViewProposal = async (jobId) => {
     try {
@@ -56,6 +61,51 @@ const Dashboard = ({
       minute: '2-digit',
     });
   };
+
+  const statusCounts = useMemo(() => {
+    return jobs.reduce((acc, job) => {
+      const key = job.status || 'unknown';
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+  }, [jobs]);
+
+  const availablePlatforms = useMemo(() => {
+    const platforms = jobs
+      .map((job) => job.platform)
+      .filter(Boolean)
+      .map((platform) => platform.toLowerCase());
+    return Array.from(new Set(platforms));
+  }, [jobs]);
+
+  const filteredJobs = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    const filtered = jobs.filter((job) => {
+      const matchesQuery = !normalizedQuery
+        || [job.title, job.company, job.location, job.platform]
+          .filter(Boolean)
+          .some((field) => field.toLowerCase().includes(normalizedQuery));
+      const matchesStatus = statusFilter === 'all' || job.status === statusFilter;
+      const matchesPlatform = platformFilter === 'all'
+        || (job.platform || '').toLowerCase() === platformFilter;
+      const matchesScore = Number(job.match_score || 0) >= minScore;
+
+      return matchesQuery && matchesStatus && matchesPlatform && matchesScore;
+    });
+
+    const sorted = [...filtered].sort((a, b) => {
+      if (sortBy === 'score_high') {
+        return Number(b.match_score || 0) - Number(a.match_score || 0);
+      }
+      if (sortBy === 'score_low') {
+        return Number(a.match_score || 0) - Number(b.match_score || 0);
+      }
+      return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    });
+
+    return sorted;
+  }, [jobs, minScore, platformFilter, query, sortBy, statusFilter]);
 
   return (
     <div className="bg-background">
@@ -157,55 +207,144 @@ const Dashboard = ({
           />
         </section>
 
-        <section className="mt-8 rounded-2xl border border-border/50 bg-card p-6 shadow-sm transition-all duration-300 hover:border-border hover:shadow-lg md:p-8">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h2 className="text-2xl font-semibold text-foreground">Control Panel</h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Manage scanning, refresh cadence, and auto-apply limits.
-              </p>
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <button
-                onClick={onRunScan}
-                className="rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-all duration-300 hover:shadow-lg"
-              >
-                Run Job Scan
-              </button>
-              <button
-                onClick={onRefresh}
-                className="rounded-lg border-2 border-primary px-6 py-3 text-sm font-medium text-primary transition-colors duration-300 hover:bg-primary/10"
-              >
-                Refresh Data
-              </button>
+        <section className="mt-8 grid gap-4 lg:grid-cols-2">
+          <div className="rounded-2xl border border-border/50 bg-card p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-foreground">Operations</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Core automation controls and daily apply limits.
+            </p>
+            <div className="mt-4 grid gap-3 text-sm">
+              <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background-subtle p-3">
+                <span className="text-muted-foreground">Scheduler</span>
+                <span className="font-medium text-foreground">
+                  {schedulerStatus?.running ? 'Running' : 'Stopped'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background-subtle p-3">
+                <span className="text-muted-foreground">Active Scan</span>
+                <span className="font-medium text-foreground">
+                  {schedulerStatus?.scanning ? 'In progress' : 'Idle'}
+                </span>
+              </div>
+              <label className="flex items-center justify-between rounded-lg border border-border/60 bg-background-subtle p-3">
+                <span className="font-medium text-foreground">Auto-apply</span>
+                <input
+                  type="checkbox"
+                  checked={schedulerStatus?.auto_apply_enabled || false}
+                  onChange={(e) => onToggleAutoApply(e.target.checked)}
+                  className="h-5 w-5 accent-primary"
+                />
+              </label>
+              <div className="rounded-lg border border-border/60 bg-background-subtle p-3 text-muted-foreground">
+                {schedulerStatus?.applications_today || 0} / {schedulerStatus?.max_applications_per_day || 10} applications today
+              </div>
             </div>
           </div>
-
-          <div className="mt-6 grid gap-4 lg:grid-cols-2">
-            <label className="flex items-center justify-between rounded-lg border border-border/60 bg-background-subtle p-4 text-sm text-foreground">
-              <span className="font-medium">Auto-apply</span>
-              <input
-                type="checkbox"
-                checked={schedulerStatus?.auto_apply_enabled || false}
-                onChange={(e) => onToggleAutoApply(e.target.checked)}
-                className="h-5 w-5 accent-primary"
-              />
-            </label>
-            <div className="rounded-lg border border-border/60 bg-background-subtle p-4 text-sm text-muted-foreground">
-              {schedulerStatus?.applications_today || 0} / {schedulerStatus?.max_applications_per_day || 10} applications today
+          <div className="rounded-2xl border border-border/50 bg-card p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-foreground">Pipeline Overview</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Snapshot of the current queue by status.
+            </p>
+            <div className="mt-4 grid gap-3">
+              <MiniStat label="New" value={statusCounts.new || 0} accent="bg-secondary" />
+              <MiniStat label="Proposal Generated" value={statusCounts.proposal_generated || 0} accent="bg-accent-1" />
+              <MiniStat label="Manual Review" value={statusCounts.manual_review || 0} accent="bg-accent-3" />
+              <MiniStat label="Applied" value={statusCounts.applied || 0} accent="bg-accent-2" />
+              <MiniStat label="Failed" value={statusCounts.failed || 0} accent="bg-destructive/10" />
+              <MiniStat label="Filtered" value={statusCounts.filtered || 0} accent="bg-secondary" />
             </div>
           </div>
         </section>
 
         <section className="mt-8 rounded-2xl border border-border/50 bg-card shadow-sm">
-          <div className="flex flex-col gap-2 border-b border-border/60 px-6 py-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-4 border-b border-border/60 px-6 py-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-2xl font-semibold text-foreground">Jobs</h2>
-              <p className="text-sm text-muted-foreground">{jobs.length} results in the current queue.</p>
+              <p className="text-sm text-muted-foreground">
+                Showing {filteredJobs.length} of {jobs.length} results.
+              </p>
             </div>
-            <div className="text-xs font-medium text-muted-foreground">
-              Sorted by latest ingestion
+            <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
+              <span>Sorted by</span>
+              <select
+                value={sortBy}
+                onChange={(event) => setSortBy(event.target.value)}
+                className="rounded-md border border-border/60 bg-background px-2 py-1 text-xs text-foreground"
+              >
+                <option value="newest">Newest first</option>
+                <option value="score_high">Score high to low</option>
+                <option value="score_low">Score low to high</option>
+              </select>
             </div>
+          </div>
+
+          <div className="grid gap-3 border-b border-border/60 px-6 py-4 text-sm md:grid-cols-2 lg:grid-cols-5">
+            <label className="flex flex-col gap-2">
+              <span className="text-xs font-medium uppercase tracking-tight text-muted-foreground">Search</span>
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Title, company, location"
+                className="rounded-lg border border-border/60 bg-background px-3 py-2 text-sm text-foreground"
+              />
+            </label>
+            <label className="flex flex-col gap-2">
+              <span className="text-xs font-medium uppercase tracking-tight text-muted-foreground">Status</span>
+              <select
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+                className="rounded-lg border border-border/60 bg-background px-3 py-2 text-sm text-foreground"
+              >
+                <option value="all">All</option>
+                <option value="new">New</option>
+                <option value="proposal_generated">Proposal generated</option>
+                <option value="manual_review">Manual review</option>
+                <option value="applied">Applied</option>
+                <option value="failed">Failed</option>
+                <option value="filtered">Filtered</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-2">
+              <span className="text-xs font-medium uppercase tracking-tight text-muted-foreground">Platform</span>
+              <select
+                value={platformFilter}
+                onChange={(event) => setPlatformFilter(event.target.value)}
+                className="rounded-lg border border-border/60 bg-background px-3 py-2 text-sm text-foreground"
+              >
+                <option value="all">All</option>
+                {availablePlatforms.map((platform) => (
+                  <option key={platform} value={platform}>
+                    {platform}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-2 lg:col-span-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium uppercase tracking-tight text-muted-foreground">Min score</span>
+                <span className="text-xs font-medium text-foreground">{minScore}%</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={minScore}
+                onChange={(event) => setMinScore(Number(event.target.value))}
+                className="w-full accent-primary"
+              />
+            </label>
+            <button
+              onClick={() => {
+                setQuery('');
+                setStatusFilter('all');
+                setPlatformFilter('all');
+                setMinScore(0);
+                setSortBy('newest');
+              }}
+              className="rounded-lg border-2 border-primary px-4 py-2 text-sm font-medium text-primary transition-colors duration-300 hover:bg-primary/10"
+            >
+              Clear Filters
+            </button>
           </div>
 
           <div className="overflow-x-auto">
@@ -222,14 +361,14 @@ const Dashboard = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
-                {jobs.length === 0 ? (
+                {filteredJobs.length === 0 ? (
                   <tr>
                     <td colSpan="7" className="px-6 py-6 text-center text-muted-foreground">
-                      No jobs found. Run a scan to populate the queue.
+                      No jobs match the current filters.
                     </td>
                   </tr>
                 ) : (
-                  jobs.map((job) => (
+                  filteredJobs.map((job) => (
                     <tr key={job.id} className="group transition-colors duration-300 hover:bg-background-subtle">
                       <td className="px-6 py-4">
                         <div className="font-medium text-foreground">{job.title}</div>
@@ -351,7 +490,7 @@ const Dashboard = ({
         </div>
       )}
 
-      {showLogsModal && logs && (
+      {showLogsModal && (
         <div className="fixed inset-0 z-50 flex items-start justify-center p-4">
           <div className="absolute inset-0 bg-foreground/20 backdrop-blur-sm" aria-hidden="true" />
           <div className="relative mt-16 w-full max-w-4xl overflow-hidden rounded-2xl bg-background shadow-2xl">
@@ -374,13 +513,13 @@ const Dashboard = ({
             </div>
             <div className="max-h-[60vh] overflow-y-auto p-6">
               <div className="rounded-lg border border-border/60 bg-background-subtle p-4 text-sm text-foreground font-mono whitespace-pre-wrap">
-                {logs.logs || 'No logs available'}
+                {logs?.logs || 'Loading logs...'}
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 border-t border-border/60 p-6">
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(logs.logs || '');
+                  navigator.clipboard.writeText(logs?.logs || '');
                   alert('Logs copied to clipboard!');
                 }}
                 className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-all duration-300 hover:shadow-lg"
@@ -411,6 +550,18 @@ const StatCard = ({ title, value, accent }) => {
         </div>
         <div className={`h-12 w-12 rounded-full ${accent}`} />
       </div>
+    </div>
+  );
+};
+
+const MiniStat = ({ label, value, accent }) => {
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background-subtle px-4 py-2 text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="flex items-center gap-2 font-medium text-foreground">
+        <span className={`h-2.5 w-2.5 rounded-full ${accent}`} />
+        {value}
+      </span>
     </div>
   );
 };
