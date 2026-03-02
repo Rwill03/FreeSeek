@@ -1,5 +1,11 @@
 import { useMemo, useState } from 'react';
 import apiClient from '../api';
+import Header from './Header';
+import StatsSection from './StatsSection';
+import OperationsSection from './OperationsSection';
+import JobsTable from './JobsTable';
+import ProposalModal from './ProposalModal';
+import LogsModal from './LogsModal';
 
 const Dashboard = ({
   stats,
@@ -17,11 +23,6 @@ const Dashboard = ({
   const [proposal, setProposal] = useState(null);
   const [showProposalModal, setShowProposalModal] = useState(false);
   const [showLogsModal, setShowLogsModal] = useState(false);
-  const [query, setQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [platformFilter, setPlatformFilter] = useState('all');
-  const [minScore, setMinScore] = useState(0);
-  const [sortBy, setSortBy] = useState('newest');
 
   const handleViewProposal = async (jobId) => {
     try {
@@ -33,33 +34,9 @@ const Dashboard = ({
     }
   };
 
-  const getStatusStyles = (status) => {
-    switch (status) {
-      case 'applied':
-        return 'bg-accent-2 text-accent-2-vivid';
-      case 'proposal_generated':
-        return 'bg-accent-1 text-accent-1-vivid';
-      case 'new':
-        return 'bg-secondary text-foreground';
-      case 'manual_review':
-        return 'bg-accent-3 text-accent-3-vivid';
-      case 'failed':
-        return 'bg-destructive/10 text-destructive';
-      case 'filtered':
-        return 'bg-secondary text-muted-foreground';
-      default:
-        return 'bg-secondary text-muted-foreground';
-    }
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  const handleGetLogs = () => {
+    onGetLogs();
+    setShowLogsModal(true);
   };
 
   const statusCounts = useMemo(() => {
@@ -69,43 +46,6 @@ const Dashboard = ({
       return acc;
     }, {});
   }, [jobs]);
-
-  const availablePlatforms = useMemo(() => {
-    const platforms = jobs
-      .map((job) => job.platform)
-      .filter(Boolean)
-      .map((platform) => platform.toLowerCase());
-    return Array.from(new Set(platforms));
-  }, [jobs]);
-
-  const filteredJobs = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-
-    const filtered = jobs.filter((job) => {
-      const matchesQuery = !normalizedQuery
-        || [job.title, job.company, job.location, job.platform]
-          .filter(Boolean)
-          .some((field) => field.toLowerCase().includes(normalizedQuery));
-      const matchesStatus = statusFilter === 'all' || job.status === statusFilter;
-      const matchesPlatform = platformFilter === 'all'
-        || (job.platform || '').toLowerCase() === platformFilter;
-      const matchesScore = Number(job.match_score || 0) >= minScore;
-
-      return matchesQuery && matchesStatus && matchesPlatform && matchesScore;
-    });
-
-    const sorted = [...filtered].sort((a, b) => {
-      if (sortBy === 'score_high') {
-        return Number(b.match_score || 0) - Number(a.match_score || 0);
-      }
-      if (sortBy === 'score_low') {
-        return Number(a.match_score || 0) - Number(b.match_score || 0);
-      }
-      return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-    });
-
-    return sorted;
-  }, [jobs, minScore, platformFilter, query, sortBy, statusFilter]);
 
   return (
     <div className="bg-background">
